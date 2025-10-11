@@ -1,0 +1,77 @@
+# ========================================
+# Vercel Deployment - Ignore Configuration
+# ========================================
+
+# Documentation files (keep only essential)
+*.md
+!README.md
+
+# Local environment files (NEVER deploy these)
+.env.local
+.env*.local
+.env.development
+
+# Node modules (Vercel installs them)
+node_modules/
+
+# Build output (Vercel generates this)
+.next/
+out/
+build/
+dist/
+
+# Prisma generated files (regenerated on deploy)
+# Note: We DON'T ignore prisma/ folder itself
+node_modules/.prisma/
+node_modules/@prisma/
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+__tests__/
+coverage/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+*.log
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# Vercel files (auto-generated)
+.vercel/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache
+.npm/
+
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.prettiercache

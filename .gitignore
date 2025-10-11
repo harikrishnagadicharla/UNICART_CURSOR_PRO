@@ -1,0 +1,114 @@
+# ========================================
+# Git Ignore - UniCart Project
+# ========================================
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Testing
+/coverage
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Next.js Build Output
+/.next/
+/out/
+/build
+.next
+
+# Production
+/dist
+
+# Environment Variables (NEVER COMMIT THESE!)
+.env
+.env.local
+.env*.local
+.env.development
+.env.production
+*.env
+
+# Vercel
+.vercel
+.vercel/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Prisma Generated Files (regenerated during build)
+/node_modules/.prisma/
+/node_modules/@prisma/
+/lib/generated/prisma
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.pem
+*.key
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+
+# Temporary Files
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+
+# Backup Files
+*.backup
+*.bak
+*~
+
+# Debug
+.npmrc
+.yarnrc
+
+# Optional npm cache
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional prettier cache
+.prettierrc
+
+# MacOS
+.AppleDouble
+.LSOverride
+
+# Windows
+desktop.ini
+
+# Lock files (optional - uncomment if you want to ignore)
+# package-lock.json
+# yarn.lock
