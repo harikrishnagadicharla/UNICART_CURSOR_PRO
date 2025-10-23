@@ -33,7 +33,7 @@ export function Footer() {
                   className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-400"
                 />
                 <Button className="bg-primary-500 hover:bg-primary-600">
-                  Subscribe
+                  <span>Subscribe</span>
                 </Button>
               </div>
             </div>

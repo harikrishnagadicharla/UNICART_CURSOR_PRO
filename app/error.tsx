@@ -28,12 +28,12 @@ export default function Error({
         <div className="flex gap-4 justify-center">
           <Button onClick={reset}>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Try Again
+            <span>Try Again</span>
           </Button>
           <Button variant="outline" asChild>
             <a href="/">
               <Home className="mr-2 h-4 w-4" />
-              Go Home
+              <span>Go Home</span>
             </a>
           </Button>
         </div>

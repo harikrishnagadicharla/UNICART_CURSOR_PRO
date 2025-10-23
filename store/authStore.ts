@@ -14,40 +14,6 @@ interface AuthStore {
   checkAuth: () => void;
 }
 
-// Default admin credentials
-const ADMIN_EMAIL = "admin@example.com";
-const ADMIN_PASSWORD = "Admin@123";
-
-// Storage keys
-const USERS_STORAGE_KEY = "unicart_users";
-const CURRENT_USER_KEY = "unicart_current_user";
-
-// Initialize admin user if not exists
-const initializeAdmin = () => {
-  if (typeof window === "undefined") return;
-  
-  const usersJson = localStorage.getItem(USERS_STORAGE_KEY);
-  const users = usersJson ? JSON.parse(usersJson) : [];
-  
-  const adminExists = users.some((u: any) => u.email === ADMIN_EMAIL);
-  
-  if (!adminExists) {
-    const adminUser = {
-      id: "admin-001",
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-      firstName: "Admin",
-      lastName: "User",
-      role: "admin" as const,
-      emailVerified: true,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    };
-    users.push(adminUser);
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  }
-};
-
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
@@ -57,105 +23,98 @@ export const useAuthStore = create<AuthStore>()(
 
       login: async (email: string, password: string) => {
         try {
-          // Get users from localStorage
-          const usersJson = localStorage.getItem(USERS_STORAGE_KEY);
-          const users = usersJson ? JSON.parse(usersJson) : [];
+          set({ isLoading: true });
           
-          // Find user
-          const user = users.find(
-            (u: any) => u.email === email && u.password === password
-          );
-          
-          if (!user) {
-            return { success: false, message: "Invalid email or password" };
-          }
-          
-          // Create user object without password
-          const { password: _, ...userWithoutPassword } = user;
-          
-          // Store current user
-          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
-          
-          // Update state
-          set({ 
-            user: userWithoutPassword, 
-            isAuthenticated: true 
+          // Call the working login API
+          const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
           });
           
-          return { success: true, message: "Login successful" };
+          const data = await response.json();
+          
+          if (data.success) {
+            // Store token and user data
+            localStorage.setItem('auth_token', data.token);
+            localStorage.setItem('user_data', JSON.stringify(data.user));
+            
+            // Update state
+            set({ 
+              user: data.user, 
+              isAuthenticated: true,
+              isLoading: false
+            });
+            
+            return { success: true, message: "Login successful" };
+          } else {
+            set({ isLoading: false });
+            return { success: false, message: data.error || "Login failed" };
+          }
         } catch (error) {
-          return { success: false, message: "Login failed" };
+          set({ isLoading: false });
+          return { success: false, message: "Network error. Please try again." };
         }
       },
 
       register: async (data) => {
         try {
+          set({ isLoading: true });
           const { email, password, firstName, lastName } = data;
           
-          // Prevent admin re-registration
-          if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-            return { 
-              success: false, 
-              message: "This email is reserved. Please use a different email address." 
-            };
-          }
-          
-          // Get existing users
-          const usersJson = localStorage.getItem(USERS_STORAGE_KEY);
-          const users = usersJson ? JSON.parse(usersJson) : [];
-          
-          // Check if user already exists
-          const userExists = users.some((u: any) => u.email.toLowerCase() === email.toLowerCase());
-          
-          if (userExists) {
-            return { success: false, message: "An account with this email already exists" };
-          }
-          
-          // Create new user
-          const newUser = {
-            id: `user-${Date.now()}`,
-            email,
-            password,
-            firstName: firstName || "",
-            lastName: lastName || "",
-            role: "customer" as const,
-            emailVerified: false,
-            isActive: true,
-            createdAt: new Date().toISOString(),
-          };
-          
-          users.push(newUser);
-          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-          
-          // Auto-login after registration
-          const { password: _, ...userWithoutPassword } = newUser;
-          localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
-          
-          set({ 
-            user: userWithoutPassword, 
-            isAuthenticated: true 
+          // Call the working register API
+          const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, firstName, lastName })
           });
           
-          return { success: true, message: "Registration successful" };
+          const result = await response.json();
+          
+          if (result.success) {
+            // Store token and user data
+            localStorage.setItem('auth_token', result.token);
+            localStorage.setItem('user_data', JSON.stringify(result.user));
+            
+            // Update state
+            set({ 
+              user: result.user, 
+              isAuthenticated: true,
+              isLoading: false
+            });
+            
+            return { success: true, message: "Registration successful" };
+          } else {
+            set({ isLoading: false });
+            return { success: false, message: result.error || "Registration failed" };
+          }
         } catch (error) {
-          return { success: false, message: "Registration failed" };
+          set({ isLoading: false });
+          return { success: false, message: "Network error. Please try again." };
         }
       },
 
       logout: () => {
-        localStorage.removeItem(CURRENT_USER_KEY);
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_data');
         set({ user: null, isAuthenticated: false });
       },
 
       checkAuth: () => {
         if (typeof window === "undefined") return;
         
-        initializeAdmin();
+        const token = localStorage.getItem('auth_token');
+        const userData = localStorage.getItem('user_data');
         
-        const currentUserJson = localStorage.getItem(CURRENT_USER_KEY);
-        if (currentUserJson) {
-          const user = JSON.parse(currentUserJson);
-          set({ user, isAuthenticated: true });
+        if (token && userData) {
+          try {
+            const user = JSON.parse(userData);
+            set({ user, isAuthenticated: true });
+          } catch (error) {
+            // Clear invalid data
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_data');
+          }
         }
       },
     }),

@@ -27,20 +27,51 @@ export default function ProductsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const addItem = useCartStore((state) => state.addItem);
   const { searchProducts } = useSearchStore();
-  const categories = categoriesData as unknown as Category[];
 
-  // Load products from localStorage or use default
+  // Load products and categories from API
   useEffect(() => {
-    const storedProducts = localStorage.getItem("unicart_admin_products");
-    if (storedProducts) {
-      setProducts(JSON.parse(storedProducts));
-    } else {
-      setProducts(productsData as unknown as Product[]);
-    }
+    setIsMounted(true);
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch products and categories in parallel
+        const [productsResponse, categoriesResponse] = await Promise.all([
+          fetch('/api/products'),
+          fetch('/api/categories')
+        ]);
+
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          if (productsData.success) {
+            setProducts(productsData.products);
+          }
+        }
+
+        if (categoriesResponse.ok) {
+          const categoriesData = await categoriesResponse.json();
+          if (categoriesData.success) {
+            setCategories(categoriesData.categories);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        // Fallback to static data
+        setProducts(productsData as unknown as Product[]);
+        setCategories(categoriesData as unknown as Category[]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   // Handle search query from URL
@@ -367,7 +398,11 @@ export default function ProductsPage() {
             </div>
 
             {/* Products Grid */}
-            {filteredProducts.length === 0 ? (
+            {!isMounted || isLoading ? (
+              <div className="bg-white rounded-lg border p-12 text-center">
+                <p className="text-gray-500 text-lg mb-4">Loading products...</p>
+              </div>
+            ) : filteredProducts.length === 0 ? (
               <div className="bg-white rounded-lg border p-12 text-center">
                 <p className="text-gray-500 text-lg mb-4">No products found</p>
                 <Button onClick={clearFilters} variant="outline">

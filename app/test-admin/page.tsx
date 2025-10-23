@@ -11,8 +11,10 @@ export default function TestAdminPage() {
     email: "admin@example.com",
     password: "Admin@123"
   });
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     checkAuth();
   }, [checkAuth]);
 
@@ -92,15 +94,15 @@ export default function TestAdminPage() {
         <div className="text-sm space-y-1">
           <p><strong>localStorage unicart_auth:</strong></p>
           <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
-            {typeof window !== "undefined" ? localStorage.getItem("unicart_auth") || "null" : "SSR"}
+            {isMounted ? (localStorage.getItem("unicart_auth") || "null") : "Loading..."}
           </pre>
           <p><strong>localStorage unicart_current_user:</strong></p>
           <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
-            {typeof window !== "undefined" ? localStorage.getItem("unicart_current_user") || "null" : "SSR"}
+            {isMounted ? (localStorage.getItem("unicart_current_user") || "null") : "Loading..."}
           </pre>
           <p><strong>localStorage unicart_users:</strong></p>
           <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
-            {typeof window !== "undefined" ? localStorage.getItem("unicart_users") || "null" : "SSR"}
+            {isMounted ? (localStorage.getItem("unicart_users") || "null") : "Loading..."}
           </pre>
         </div>
       </Card>

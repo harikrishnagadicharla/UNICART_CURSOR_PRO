@@ -8,39 +8,53 @@ import { Card } from "@/components/ui/Card";
 import { ArrowRight, ShoppingBag, Truck, RefreshCw, Shield } from "lucide-react";
 import productsData from "@/data/products.json";
 import categoriesData from "@/data/categories.json";
+import { useCart } from "@/hooks/useCart";
 import type { Product } from "@/types";
 
 export default function HomePage() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [isClient, setIsClient] = useState(false);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const { addToCart } = useCart();
 
   useEffect(() => {
-    setIsClient(true);
-    // Load products safely
-    if (typeof window !== 'undefined') {
+    setIsMounted(true);
+    const fetchData = async () => {
       try {
-        const storedProducts = localStorage.getItem("unicart_admin_products");
-        if (storedProducts) {
-          const parsed = JSON.parse(storedProducts);
-          setFeaturedProducts(parsed.slice(0, 6));
-        } else {
-          setFeaturedProducts((productsData as unknown as Product[]).slice(0, 6));
+        setIsLoading(true);
+        
+        // Fetch featured products and categories
+        const [productsResponse, categoriesResponse] = await Promise.all([
+          fetch('/api/products?featured=true&limit=6'),
+          fetch('/api/categories')
+        ]);
+
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          if (productsData.success) {
+            setFeaturedProducts(productsData.products);
+          }
+        }
+
+        if (categoriesResponse.ok) {
+          const categoriesData = await categoriesResponse.json();
+          if (categoriesData.success) {
+            setCategories(categoriesData.categories);
+          }
         }
       } catch (error) {
-        console.error('Error loading products:', error);
+        console.error('Failed to fetch data:', error);
+        // Fallback to static data
         setFeaturedProducts((productsData as unknown as Product[]).slice(0, 6));
+        setCategories(categoriesData as unknown as any[]);
+      } finally {
+        setIsLoading(false);
       }
-    } else {
-      // Server-side: use default products
-      setFeaturedProducts((productsData as unknown as Product[]).slice(0, 6));
-    }
+    };
+
+    fetchData();
   }, []);
-
-  const handleAddToCart = (product: Product) => {
-    console.log('Adding to cart:', product.name);
-  };
-
-  const categories = categoriesData as unknown as any[];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -159,7 +173,7 @@ export default function HomePage() {
               Handpicked products just for you
             </p>
           </div>
-          {isClient && featuredProducts.length > 0 && (
+          {isMounted && featuredProducts.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {featuredProducts.map((product) => (
                 <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
@@ -178,8 +192,8 @@ export default function HomePage() {
                       <span className="text-2xl font-bold text-primary-600">
                         ${product.price}
                       </span>
-                      <Button onClick={() => handleAddToCart(product)}>
-                        Add to Cart
+                      <Button onClick={() => addToCart(product)}>
+                        <span>Add to Cart</span>
                       </Button>
                     </div>
                   </div>

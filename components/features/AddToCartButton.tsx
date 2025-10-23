@@ -43,17 +43,19 @@ export function AddToCartButton({
       size={size}
       disabled={isAdded}
     >
-      {isAdded ? (
-        <>
-          <Check className={showIcon ? "mr-2 h-4 w-4" : "h-4 w-4"} />
-          {showIcon && "Added!"}
-        </>
-      ) : (
-        <>
-          <ShoppingCart className={showIcon ? "mr-2 h-4 w-4" : "h-4 w-4"} />
-          {showIcon && "Add to Cart"}
-        </>
-      )}
+      <span className="flex items-center">
+        {isAdded ? (
+          <>
+            <Check className={showIcon ? "mr-2 h-4 w-4" : "h-4 w-4"} />
+            {showIcon && <span>Added!</span>}
+          </>
+        ) : (
+          <>
+            <ShoppingCart className={showIcon ? "mr-2 h-4 w-4" : "h-4 w-4"} />
+            {showIcon && <span>Add to Cart</span>}
+          </>
+        )}
+      </span>
     </Button>
   );
 }

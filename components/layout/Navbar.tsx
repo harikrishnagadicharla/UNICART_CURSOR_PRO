@@ -16,6 +16,7 @@ export function Navbar() {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   
   const itemCount = useCartStore((state) => state.getItemCount());
   const wishlistCount = useWishlistStore((state) => state.getItemCount());
@@ -23,6 +24,7 @@ export function Navbar() {
 
   // Check auth on mount
   useEffect(() => {
+    setIsMounted(true);
     checkAuth();
   }, [checkAuth]);
 
@@ -71,7 +73,7 @@ export function Navbar() {
             <Link href="/wishlist" className="hidden md:block">
               <Button variant="ghost" size="icon" className="relative">
                 <Heart className="h-5 w-5" />
-                {wishlistCount > 0 && (
+                {isMounted && wishlistCount > 0 && (
                   <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                     {wishlistCount}
                   </span>
@@ -80,7 +82,7 @@ export function Navbar() {
             </Link>
 
             {/* Account */}
-            {isAuthenticated && user ? (
+            {isMounted && isAuthenticated && user ? (
               <div className="relative">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
@@ -159,7 +161,7 @@ export function Navbar() {
                           className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                         >
                           <LogOut className="h-4 w-4" />
-                          Logout
+                          <span>Logout</span>
                         </button>
                       </div>
                     </div>
@@ -178,7 +180,7 @@ export function Navbar() {
             <Link href="/cart">
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />
-                {itemCount > 0 && (
+                {isMounted && itemCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary-500 text-[10px] font-bold text-white">
                     {itemCount}
                   </span>
@@ -217,7 +219,7 @@ export function Navbar() {
           {/* Categories Dropdown */}
           <div className="relative group">
             <button className="text-sm font-medium text-gray-700 hover:text-primary-500 transition-colors">
-              All Categories
+              <span>All Categories</span>
             </button>
             <div className="absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
               <div className="py-1">

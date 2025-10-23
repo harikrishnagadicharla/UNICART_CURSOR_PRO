@@ -147,7 +147,7 @@ export default function WishlistPage() {
                 {/* Image Container */}
                 <div className="relative aspect-square overflow-hidden bg-gray-100">
                   <Image
-                    src={product.images[0]?.url || ""}
+                    src={product.images?.[0]?.url || "https://via.placeholder.com/400x400?text=No+Image"}
                     alt={product.name}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -193,7 +193,7 @@ export default function WishlistPage() {
                   </div>
 
                   {/* Stock Status */}
-                  {product.stockQuantity === 0 && (
+                  {(product.stockQuantity || 0) === 0 && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                       <Badge variant="secondary" className="text-sm">
                         Out of Stock
@@ -219,10 +219,10 @@ export default function WishlistPage() {
                   {/* Rating */}
                   <div className="flex items-center gap-2 mb-3">
                     <div className="flex items-center">
-                      {renderStars(product.rating.average)}
+                      {renderStars(product.rating?.average || 0)}
                     </div>
                     <span className="text-sm text-gray-500">
-                      ({product.rating.count})
+                      ({product.rating?.count || 0})
                     </span>
                   </div>
 
@@ -243,10 +243,10 @@ export default function WishlistPage() {
                     <Button
                       onClick={() => handleAddToCart(product)}
                       className="flex-1"
-                      disabled={product.stockQuantity === 0}
+                      disabled={(product.stockQuantity || 0) === 0}
                     >
                       <ShoppingCart className="mr-2 h-4 w-4" />
-                      {product.stockQuantity === 0 ? "Out of Stock" : "Add to Cart"}
+                      {(product.stockQuantity || 0) === 0 ? "Out of Stock" : "Add to Cart"}
                     </Button>
                     
                     <Button
@@ -276,7 +276,7 @@ export default function WishlistPage() {
                 <Button
                   onClick={() => {
                     wishlistItems.forEach(product => {
-                      if (product.stockQuantity > 0) {
+                      if ((product.stockQuantity || 0) > 0) {
                         addItem(product, 1);
                       }
                     });

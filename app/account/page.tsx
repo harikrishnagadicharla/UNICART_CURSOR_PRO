@@ -90,7 +90,7 @@ export default function AccountPage() {
               </div>
 
               <div className="mt-6 pt-6 border-t">
-                <Button variant="outline">Edit Profile</Button>
+                <Button variant="outline"><span>Edit Profile</span></Button>
               </div>
             </Card>
 

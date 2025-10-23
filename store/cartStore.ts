@@ -5,12 +5,14 @@ import { CART_STORAGE_KEY, TAX_RATE, FREE_SHIPPING_THRESHOLD } from "@/lib/const
 
 interface CartStore {
   items: CartItem[];
+  isLoading: boolean;
   
   // Actions
-  addItem: (product: Product, quantity?: number, variant?: ProductVariant) => void;
-  removeItem: (itemId: string) => void;
-  updateQuantity: (itemId: string, quantity: number) => void;
-  clearCart: () => void;
+  addItem: (product: Product, quantity?: number, variant?: ProductVariant) => Promise<void>;
+  removeItem: (itemId: string) => Promise<void>;
+  updateQuantity: (itemId: string, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
+  fetchCart: () => Promise<void>;
   
   // Computed values
   getItemCount: () => number;
@@ -25,52 +27,166 @@ export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
+      isLoading: false,
 
-      addItem: (product, quantity = 1, variant) => {
-        const items = get().items;
-        const existingItemIndex = items.findIndex(
-          (item) =>
-            item.productId === product.id &&
-            item.variantId === variant?.id
-        );
+      fetchCart: async () => {
+        try {
+          const token = localStorage.getItem('auth_token');
+          if (!token) return;
 
-        if (existingItemIndex > -1) {
-          // Update quantity if item exists
-          const updatedItems = [...items];
-          updatedItems[existingItemIndex].quantity += quantity;
-          set({ items: updatedItems });
-        } else {
-          // Add new item
-          const newItem: CartItem = {
-            id: `${product.id}-${variant?.id || "default"}-${Date.now()}`,
-            productId: product.id,
-            variantId: variant?.id,
-            product,
-            variant,
-            quantity,
-            price: variant?.price || product.price,
-          };
-          set({ items: [...items, newItem] });
+          const response = await fetch('/api/cart', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              set({ items: data.cart.items || [] });
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch cart:', error);
         }
       },
 
-      removeItem: (itemId) => {
-        set({ items: get().items.filter((item) => item.id !== itemId) });
-      },
+      addItem: async (product, quantity = 1, variant) => {
+        try {
+          set({ isLoading: true });
+          const token = localStorage.getItem('auth_token');
+          
+          if (!token) {
+            console.error('User not authenticated');
+            set({ isLoading: false });
+            return;
+          }
 
-      updateQuantity: (itemId, quantity) => {
-        if (quantity < 1) {
-          return; // Don't allow quantity below 1
+          const response = await fetch('/api/cart', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              productId: product.id,
+              quantity: quantity
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              // Refresh cart from server
+              await get().fetchCart();
+            }
+          }
+        } catch (error) {
+          console.error('Failed to add item to cart:', error);
+        } finally {
+          set({ isLoading: false });
         }
-
-        const items = get().items.map((item) =>
-          item.id === itemId ? { ...item, quantity } : item
-        );
-        set({ items });
       },
 
-      clearCart: () => {
-        set({ items: [] });
+      removeItem: async (itemId) => {
+        try {
+          set({ isLoading: true });
+          const token = localStorage.getItem('auth_token');
+          
+          if (!token) {
+            console.error('User not authenticated');
+            set({ isLoading: false });
+            return;
+          }
+
+          // Find the product ID from the item
+          const item = get().items.find(item => item.id === itemId);
+          if (!item) return;
+
+          const response = await fetch(`/api/cart/${item.productId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.ok) {
+            // Refresh cart from server
+            await get().fetchCart();
+          }
+        } catch (error) {
+          console.error('Failed to remove item from cart:', error);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      updateQuantity: async (itemId, quantity) => {
+        try {
+          if (quantity < 1) return;
+
+          set({ isLoading: true });
+          const token = localStorage.getItem('auth_token');
+          
+          if (!token) {
+            console.error('User not authenticated');
+            set({ isLoading: false });
+            return;
+          }
+
+          // Find the product ID from the item
+          const item = get().items.find(item => item.id === itemId);
+          if (!item) return;
+
+          const response = await fetch(`/api/cart/${item.productId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ quantity })
+          });
+
+          if (response.ok) {
+            // Refresh cart from server
+            await get().fetchCart();
+          }
+        } catch (error) {
+          console.error('Failed to update cart item:', error);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      clearCart: async () => {
+        try {
+          set({ isLoading: true });
+          const token = localStorage.getItem('auth_token');
+          
+          if (!token) {
+            console.error('User not authenticated');
+            set({ isLoading: false });
+            return;
+          }
+
+          // Remove all items one by one
+          const items = get().items;
+          for (const item of items) {
+            await fetch(`/api/cart/${item.productId}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+          }
+
+          // Refresh cart from server
+          await get().fetchCart();
+        } catch (error) {
+          console.error('Failed to clear cart:', error);
+        } finally {
+          set({ isLoading: false });
+        }
       },
 
       getItemCount: () => {

@@ -195,7 +195,9 @@ export function ProductCard({
             className="w-full"
             disabled={product.stockQuantity === 0}
           >
-            {product.stockQuantity === 0 ? "Out of Stock" : "Add to Cart"}
+            <span>
+              {product.stockQuantity === 0 ? "Out of Stock" : "Add to Cart"}
+            </span>
           </Button>
         )}
       </div>

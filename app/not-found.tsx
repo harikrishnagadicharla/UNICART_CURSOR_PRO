@@ -15,13 +15,13 @@ export default function NotFound() {
         <Button asChild>
           <Link href="/">
             <Home className="mr-2 h-4 w-4" />
-            Go Home
+            <span>Go Home</span>
           </Link>
         </Button>
         <Button variant="outline" asChild>
           <Link href="/products">
             <Search className="mr-2 h-4 w-4" />
-            Browse Products
+            <span>Browse Products</span>
           </Link>
         </Button>
       </div>
