@@ -1,54 +1,179 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Heart, Tag } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
-import { useCartStore } from "@/store/cartStore";
 import { formatPrice } from "@/lib/utils";
 import { FREE_SHIPPING_THRESHOLD } from "@/lib/constants";
+import type { CartItem } from "@/types";
 
 export default function CartPage() {
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const {
-    items,
-    removeItem,
-    updateQuantity,
-    clearCart,
-    getItemCount,
-    getSubtotal,
-    getShipping,
-    getTax,
-    getTotal,
-  } = useCartStore();
+  // Fetch cart data from API
+  useEffect(() => {
+    const fetchCart = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
 
-  const itemCount = getItemCount();
-  const subtotal = getSubtotal();
-  const shipping = getShipping();
-  const tax = getTax();
-  const total = getTotal();
+        const response = await fetch('/api/cart', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setItems(data.cart.items || []);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch cart:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCart();
+  }, []);
+
+  // Calculate cart totals
+  const itemCount = items.reduce((total, item) => total + item.quantity, 0);
+  const subtotal = items.reduce((total, item) => {
+    const price = typeof item.price === 'number' ? item.price : Number(item.price);
+    return total + (price * item.quantity);
+  }, 0);
+  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 9.99;
+  const tax = subtotal * 0.08; // 8% tax
+  const total = subtotal + shipping + tax;
 
   // Handle quantity increment
-  const handleIncrement = (itemId: string, currentQuantity: number) => {
-    updateQuantity(itemId, currentQuantity + 1);
+  const handleIncrement = async (itemId: string, currentQuantity: number) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      const response = await fetch(`/api/cart/${itemId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ quantity: currentQuantity + 1 })
+      });
+
+      if (response.ok) {
+        // Refresh cart data
+        const cartResponse = await fetch('/api/cart', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (cartResponse.ok) {
+          const data = await cartResponse.json();
+          if (data.success) {
+            setItems(data.cart.items || []);
+            // Notify navbar of cart update
+            window.dispatchEvent(new CustomEvent('cartUpdated'));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update quantity:', error);
+    }
   };
 
   // Handle quantity decrement (disabled at 1)
-  const handleDecrement = (itemId: string, currentQuantity: number) => {
-    if (currentQuantity > 1) {
-      updateQuantity(itemId, currentQuantity - 1);
+  const handleDecrement = async (itemId: string, currentQuantity: number) => {
+    if (currentQuantity <= 1) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      const response = await fetch(`/api/cart/${itemId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ quantity: currentQuantity - 1 })
+      });
+
+      if (response.ok) {
+        // Refresh cart data
+        const cartResponse = await fetch('/api/cart', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (cartResponse.ok) {
+          const data = await cartResponse.json();
+          if (data.success) {
+            setItems(data.cart.items || []);
+            // Notify navbar of cart update
+            window.dispatchEvent(new CustomEvent('cartUpdated'));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update quantity:', error);
     }
   };
 
   // Handle remove item
-  const handleRemove = (itemId: string) => {
-    if (confirm("Remove this item from cart?")) {
-      removeItem(itemId);
+  const handleRemove = async (itemId: string) => {
+    if (!confirm("Remove this item from cart?")) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      const response = await fetch(`/api/cart/${itemId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        // Remove item from local state
+        setItems(items.filter(item => item.id !== itemId));
+      }
+    } catch (error) {
+      console.error('Failed to remove item:', error);
+    }
+  };
+
+  // Handle clear cart
+  const handleClearCart = async () => {
+    if (!confirm("Are you sure you want to clear your cart?")) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      // Remove all items one by one
+      for (const item of items) {
+        await fetch(`/api/cart/${item.productId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
+
+      setItems([]);
+    } catch (error) {
+      console.error('Failed to clear cart:', error);
     }
   };
 
@@ -90,7 +215,17 @@ export default function CartPage() {
           </p>
         </div>
 
-        {items.length === 0 ? (
+        {isLoading ? (
+          <Card className="p-12 text-center">
+            <div className="flex flex-col items-center max-w-md mx-auto">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                <ShoppingBag className="w-12 h-12 text-gray-400 animate-pulse" />
+              </div>
+              <h2 className="text-2xl font-semibold mb-2">Loading cart...</h2>
+              <p className="text-gray-600">Please wait while we fetch your cart items</p>
+            </div>
+          </Card>
+        ) : items.length === 0 ? (
           // Empty Cart State
           <Card className="p-12 text-center">
             <div className="flex flex-col items-center max-w-md mx-auto">
@@ -144,10 +279,13 @@ export default function CartPage() {
                         className="relative w-24 h-24 flex-shrink-0 rounded-md overflow-hidden bg-gray-100"
                       >
                         <Image
-                          src={item.product.images[0]?.url || ""}
-                          alt={item.product.images[0]?.alt || item.product.name}
+                          src={item.product.images?.[0]?.url || "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format"}
+                          alt={item.product.images?.[0]?.alt || item.product.name}
                           fill
                           className="object-cover hover:scale-105 transition-transform"
+                          onError={(e) => {
+                            e.currentTarget.src = "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format";
+                          }}
                         />
                       </Link>
 
@@ -263,11 +401,7 @@ export default function CartPage() {
               <div className="flex justify-between items-center pt-4">
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    if (confirm("Are you sure you want to clear your cart?")) {
-                      clearCart();
-                    }
-                  }}
+                  onClick={handleClearCart}
                   className="text-red-600 hover:bg-red-50 border-red-200"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />

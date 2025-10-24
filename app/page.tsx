@@ -179,10 +179,13 @@ export default function HomePage() {
                 <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
                   <div className="relative h-64">
                     <Image
-                      src={product.images[0]?.url || "/placeholder.jpg"}
+                      src={product.images[0]?.url || "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format"}
                       alt={product.name}
                       fill
                       className="object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format";
+                      }}
                     />
                   </div>
                   <div className="p-6">

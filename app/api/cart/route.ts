@@ -16,9 +16,34 @@ export async function GET(request: NextRequest) {
         where: { userId: req.user!.id },
         include: {
           product: {
-            include: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              description: true,
+              shortDescription: true,
+              brand: true,
+              sku: true,
+              price: true,
+              comparePrice: true,
+              costPrice: true,
+              stockQuantity: true,
+              lowStockThreshold: true,
+              weight: true,
+              dimensions: true,
+              isActive: true,
+              isFeatured: true,
+              isDigital: true,
+              requiresShipping: true,
+              trackQuantity: true,
+              allowBackorder: true,
+              metaTitle: true,
+              metaDescription: true,
+              tags: true,
+              createdAt: true,
+              updatedAt: true,
               images: {
-                where: { isPrimary: true },
+                orderBy: { sortOrder: 'asc' },
                 take: 1
               },
               category: {
@@ -113,9 +138,34 @@ export async function POST(request: NextRequest) {
           },
           include: {
             product: {
-              include: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                description: true,
+                shortDescription: true,
+                brand: true,
+                sku: true,
+                price: true,
+                comparePrice: true,
+                costPrice: true,
+                stockQuantity: true,
+                lowStockThreshold: true,
+                weight: true,
+                dimensions: true,
+                isActive: true,
+                isFeatured: true,
+                isDigital: true,
+                requiresShipping: true,
+                trackQuantity: true,
+                allowBackorder: true,
+                metaTitle: true,
+                metaDescription: true,
+                tags: true,
+                createdAt: true,
+                updatedAt: true,
                 images: {
-                  where: { isPrimary: true },
+                  orderBy: { sortOrder: 'asc' },
                   take: 1
                 }
               }
@@ -139,9 +189,34 @@ export async function POST(request: NextRequest) {
           },
           include: {
             product: {
-              include: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                description: true,
+                shortDescription: true,
+                brand: true,
+                sku: true,
+                price: true,
+                comparePrice: true,
+                costPrice: true,
+                stockQuantity: true,
+                lowStockThreshold: true,
+                weight: true,
+                dimensions: true,
+                isActive: true,
+                isFeatured: true,
+                isDigital: true,
+                requiresShipping: true,
+                trackQuantity: true,
+                allowBackorder: true,
+                metaTitle: true,
+                metaDescription: true,
+                tags: true,
+                createdAt: true,
+                updatedAt: true,
                 images: {
-                  where: { isPrimary: true },
+                  orderBy: { sortOrder: 'asc' },
                   take: 1
                 }
               }

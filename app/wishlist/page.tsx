@@ -7,22 +7,126 @@ import { Heart, Star, Share2, ShoppingCart, ArrowLeft, Trash2 } from "lucide-rea
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { useWishlistStore } from "@/store/wishlistStore";
-import { useCartStore } from "@/store/cartStore";
 import { formatPrice, calculateDiscount } from "@/lib/utils";
 import type { Product } from "@/types";
 
+interface WishlistItem {
+  id: string;
+  product: Product;
+  createdAt: string;
+}
+
 export default function WishlistPage() {
-  const { items: wishlistItems, removeItem, clearWishlist } = useWishlistStore();
-  const { addItem } = useCartStore();
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const handleRemoveFromWishlist = (productId: string) => {
-    removeItem(productId);
+  // Fetch wishlist data from API
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetch('/api/wishlist', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setWishlistItems(data.wishlist || []);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch wishlist:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchWishlist();
+  }, []);
+
+  const handleRemoveFromWishlist = async (productId: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      const response = await fetch(`/api/wishlist/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        // Remove item from local state
+        setWishlistItems(wishlistItems.filter(item => item.product.id !== productId));
+      }
+    } catch (error) {
+      console.error('Failed to remove from wishlist:', error);
+    }
   };
 
-  const handleAddToCart = (product: Product) => {
-    addItem(product, 1);
+  const handleAddToCart = async (product: Product) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        alert('Please login to add items to cart');
+        return;
+      }
+
+      const response = await fetch('/api/cart', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          productId: product.id,
+          quantity: 1
+        })
+      });
+
+      if (response.ok) {
+        alert('Product added to cart successfully!');
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to add to cart');
+      }
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+      alert('Failed to add to cart');
+    }
+  };
+
+  const handleClearWishlist = async () => {
+    if (!confirm("Are you sure you want to clear your wishlist?")) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      // Remove all items one by one
+      for (const item of wishlistItems) {
+        await fetch(`/api/wishlist/${item.product.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
+
+      setWishlistItems([]);
+    } catch (error) {
+      console.error('Failed to clear wishlist:', error);
+    }
   };
 
   const handleShare = async (product: Product) => {
@@ -68,6 +172,28 @@ export default function WishlistPage() {
     
     return stars;
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2">My Wishlist</h1>
+            <p className="text-gray-600">Loading your saved items...</p>
+          </div>
+          <Card className="p-12 text-center">
+            <div className="flex flex-col items-center max-w-md mx-auto">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                <Heart className="w-10 h-10 text-gray-400 animate-pulse" />
+              </div>
+              <h2 className="text-2xl font-semibold mb-2">Loading wishlist...</h2>
+              <p className="text-gray-600">Please wait while we fetch your saved items</p>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   if (wishlistItems.length === 0) {
     return (
@@ -128,7 +254,7 @@ export default function WishlistPage() {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={clearWishlist}
+              onClick={handleClearWishlist}
               className="text-red-600 hover:bg-red-50 border-red-200"
             >
               <Trash2 className="mr-2 h-4 w-4" />
@@ -139,19 +265,23 @@ export default function WishlistPage() {
 
         {/* Wishlist Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {wishlistItems.map((product) => {
+          {wishlistItems.map((item) => {
+            const product = item.product;
             const discount = product.comparePrice ? calculateDiscount(product.price, product.comparePrice) : 0;
             
             return (
-              <Card key={product.id} className="group relative overflow-hidden hover:shadow-lg transition-all duration-300">
+              <Card key={item.id} className="group relative overflow-hidden hover:shadow-lg transition-all duration-300">
                 {/* Image Container */}
                 <div className="relative aspect-square overflow-hidden bg-gray-100">
-                  <Image
-                    src={product.images?.[0]?.url || "https://via.placeholder.com/400x400?text=No+Image"}
-                    alt={product.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+                   <Image
+                     src={product.images?.[0]?.url || "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format"}
+                     alt={product.name}
+                     fill
+                     className="object-cover group-hover:scale-105 transition-transform duration-300"
+                     onError={(e) => {
+                       e.currentTarget.src = "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format";
+                     }}
+                   />
                   
                   {/* Badges */}
                   <div className="absolute top-3 left-3 flex flex-col gap-2">
@@ -192,10 +322,10 @@ export default function WishlistPage() {
                     </Button>
                   </div>
 
-                  {/* Stock Status */}
+                   {/* Stock Status */}
                   {(product.stockQuantity || 0) === 0 && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <Badge variant="secondary" className="text-sm">
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                      <Badge variant="secondary" className="text-sm bg-white/80 text-black">
                         Out of Stock
                       </Badge>
                     </div>
@@ -226,17 +356,17 @@ export default function WishlistPage() {
                     </span>
                   </div>
 
-                  {/* Price */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-lg font-bold text-gray-900">
-                      {formatPrice(product.price)}
-                    </span>
-                    {product.comparePrice && (
-                      <span className="text-sm text-gray-500 line-through">
-                        {formatPrice(product.comparePrice)}
-                      </span>
-                    )}
-                  </div>
+                   {/* Price */}
+                   <div className="flex items-center gap-2 mb-4">
+                     <span className="text-lg font-bold text-gray-900">
+                       {formatPrice(product.price || 0)}
+                     </span>
+                     {product.comparePrice && (
+                       <span className="text-sm text-gray-500 line-through">
+                         {formatPrice(product.comparePrice || 0)}
+                       </span>
+                     )}
+                   </div>
 
                   {/* Actions */}
                   <div className="flex gap-2">
@@ -274,12 +404,35 @@ export default function WishlistPage() {
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button
-                  onClick={() => {
-                    wishlistItems.forEach(product => {
-                      if ((product.stockQuantity || 0) > 0) {
-                        addItem(product, 1);
+                  onClick={async () => {
+                    const token = localStorage.getItem('auth_token');
+                    if (!token) {
+                      alert('Please login to add items to cart');
+                      return;
+                    }
+
+                    let successCount = 0;
+                    for (const item of wishlistItems) {
+                      if ((item.product.stockQuantity || 0) > 0) {
+                        try {
+                          const response = await fetch('/api/cart', {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`,
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                              productId: item.product.id,
+                              quantity: 1
+                            })
+                          });
+                          if (response.ok) successCount++;
+                        } catch (error) {
+                          console.error('Failed to add to cart:', error);
+                        }
                       }
-                    });
+                    }
+                    alert(`${successCount} items added to cart successfully!`);
                   }}
                   size="lg"
                 >

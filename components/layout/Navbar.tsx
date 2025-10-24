@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { ShoppingCart, Search, User, Menu, X, Heart, LogOut, UserCircle, Package } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
-import { useWishlistStore } from "@/store/wishlistStore";
 import { SearchBar } from "@/components/features/SearchBar";
 import { APP_NAME, NAV_LINKS, CATEGORIES } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
@@ -17,16 +16,104 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [wishlistCount, setWishlistCount] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
   
-  const itemCount = useCartStore((state) => state.getItemCount());
-  const wishlistCount = useWishlistStore((state) => state.getItemCount());
   const { user, isAuthenticated, logout, checkAuth } = useAuthStore();
 
-  // Check auth on mount
+  // Check auth on mount and fetch counts
   useEffect(() => {
     setIsMounted(true);
     checkAuth();
-  }, [checkAuth]);
+    
+    // Fetch counts if authenticated
+    if (isAuthenticated) {
+      const fetchCounts = async () => {
+        try {
+          const token = localStorage.getItem('auth_token');
+          if (!token) return;
+
+          // Fetch wishlist count
+          const wishlistResponse = await fetch('/api/wishlist', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (wishlistResponse.ok) {
+            const wishlistData = await wishlistResponse.json();
+            if (wishlistData.success) {
+              setWishlistCount(wishlistData.wishlist?.length || 0);
+            }
+          }
+
+          // Fetch cart count
+          const cartResponse = await fetch('/api/cart', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (cartResponse.ok) {
+            const cartData = await cartResponse.json();
+            if (cartData.success) {
+              const itemCount = cartData.cart?.items?.reduce((total: number, item: any) => total + item.quantity, 0) || 0;
+              setCartCount(itemCount);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch counts:', error);
+        }
+      };
+
+      fetchCounts();
+    } else {
+      setWishlistCount(0);
+      setCartCount(0);
+    }
+  }, [checkAuth, isAuthenticated]);
+
+  // Listen for updates
+  useEffect(() => {
+    const handleUpdate = () => {
+      if (isAuthenticated) {
+        const fetchCounts = async () => {
+          try {
+            const token = localStorage.getItem('auth_token');
+            if (!token) return;
+
+            // Fetch wishlist count
+            const wishlistResponse = await fetch('/api/wishlist', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (wishlistResponse.ok) {
+              const wishlistData = await wishlistResponse.json();
+              if (wishlistData.success) {
+                setWishlistCount(wishlistData.wishlist?.length || 0);
+              }
+            }
+
+            // Fetch cart count
+            const cartResponse = await fetch('/api/cart', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (cartResponse.ok) {
+              const cartData = await cartResponse.json();
+              if (cartData.success) {
+                const itemCount = cartData.cart?.items?.reduce((total: number, item: any) => total + item.quantity, 0) || 0;
+                setCartCount(itemCount);
+              }
+            }
+          } catch (error) {
+            console.error('Failed to fetch counts:', error);
+          }
+        };
+
+        fetchCounts();
+      }
+    };
+
+    window.addEventListener('wishlistUpdated', handleUpdate);
+    window.addEventListener('cartUpdated', handleUpdate);
+    return () => {
+      window.removeEventListener('wishlistUpdated', handleUpdate);
+      window.removeEventListener('cartUpdated', handleUpdate);
+    };
+  }, [isAuthenticated]);
 
   const handleLogout = () => {
     logout();
@@ -180,9 +267,9 @@ export function Navbar() {
             <Link href="/cart">
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />
-                {isMounted && itemCount > 0 && (
+                {isMounted && cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary-500 text-[10px] font-bold text-white">
-                    {itemCount}
+                    {cartCount}
                   </span>
                 )}
               </Button>

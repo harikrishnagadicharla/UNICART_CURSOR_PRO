@@ -23,15 +23,34 @@ export default function CategoriesPage() {
   const addItem = useCartStore((state) => state.addItem);
 
   useEffect(() => {
-    // Load categories and products
-    setCategories(categoriesData as unknown as Category[]);
-    
-    const storedProducts = localStorage.getItem("unicart_admin_products");
-    if (storedProducts) {
-      setProducts(JSON.parse(storedProducts));
-    } else {
-      setProducts(productsData as unknown as Product[]);
-    }
+    const fetchData = async () => {
+      try {
+        // Fetch categories from API
+        const categoriesResponse = await fetch('/api/categories');
+        if (categoriesResponse.ok) {
+          const categoriesData = await categoriesResponse.json();
+          if (categoriesData.success) {
+            setCategories(categoriesData.categories);
+          }
+        }
+
+        // Fetch products from API
+        const productsResponse = await fetch('/api/products');
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          if (productsData.success) {
+            setProducts(productsData.products);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        // Fallback to static data
+        setCategories(categoriesData as unknown as Category[]);
+        setProducts(productsData as unknown as Product[]);
+      }
+    };
+
+    fetchData();
   }, []);
 
   // Filter products by category and search

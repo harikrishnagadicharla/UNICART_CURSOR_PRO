@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { ShoppingCart, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { useCartStore } from "@/store/cartStore";
 import type { Product, ProductVariant } from "@/types";
 
 interface AddToCartButtonProps {
@@ -24,16 +23,46 @@ export function AddToCartButton({
   showIcon = true,
 }: AddToCartButtonProps) {
   const [isAdded, setIsAdded] = useState(false);
-  const addItem = useCartStore((state) => state.addItem);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleAddToCart = () => {
-    addItem(product, quantity, variant);
-    setIsAdded(true);
+  const handleAddToCart = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem('auth_token');
+      
+      if (!token) {
+        alert('Please login to add items to cart');
+        return;
+      }
 
-    // Reset the success state after 2 seconds
-    setTimeout(() => {
-      setIsAdded(false);
-    }, 2000);
+      const response = await fetch('/api/cart', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          productId: product.id,
+          quantity: quantity
+        })
+      });
+
+      if (response.ok) {
+        setIsAdded(true);
+        setTimeout(() => setIsAdded(false), 2000);
+        alert('Product added to cart successfully!');
+        // Notify navbar of cart update
+        window.dispatchEvent(new CustomEvent('cartUpdated'));
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to add to cart');
+      }
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+      alert('Failed to add to cart');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -41,13 +70,18 @@ export function AddToCartButton({
       onClick={handleAddToCart}
       className={className}
       size={size}
-      disabled={isAdded}
+      disabled={isAdded || isLoading}
     >
       <span className="flex items-center">
         {isAdded ? (
           <>
             <Check className={showIcon ? "mr-2 h-4 w-4" : "h-4 w-4"} />
             {showIcon && <span>Added!</span>}
+          </>
+        ) : isLoading ? (
+          <>
+            <ShoppingCart className={`${showIcon ? "mr-2 h-4 w-4" : "h-4 w-4"} animate-pulse`} />
+            {showIcon && <span>Adding...</span>}
           </>
         ) : (
           <>

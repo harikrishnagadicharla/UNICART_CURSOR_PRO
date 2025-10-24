@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { formatPrice } from "@/lib/utils";
+import type { CartItem } from "@/types";
 
 interface ShippingFormData {
   firstName: string;
@@ -29,15 +29,8 @@ interface ShippingFormData {
 export default function CheckoutPage() {
   const router = useRouter();
   const { isAuthenticated, user, checkAuth } = useAuthStore();
-  const { 
-    items, 
-    getSubtotal, 
-    getShipping, 
-    getTax, 
-    getTotal, 
-    getItemCount,
-    clearCart 
-  } = useCartStore();
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [cartLoading, setCartLoading] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<ShippingFormData>({
@@ -60,9 +53,27 @@ export default function CheckoutPage() {
       await checkAuth();
       
       // Wait a moment for auth state to update
-      setTimeout(() => {
+      setTimeout(async () => {
         const { isAuthenticated: authState, user: userState } = useAuthStore.getState();
-        const itemCount = useCartStore.getState().getItemCount();
+        // Check if cart has items by fetching from API
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+          try {
+            const cartResponse = await fetch('/api/cart', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (cartResponse.ok) {
+              const cartData = await cartResponse.json();
+              const itemCount = cartData.cart?.items?.length || 0;
+              if (itemCount === 0) {
+                router.push("/cart");
+                return;
+              }
+            }
+          } catch (error) {
+            console.error('Failed to check cart:', error);
+          }
+        }
         
         if (!authState) {
           router.push("/login");
@@ -150,7 +161,7 @@ export default function CheckoutPage() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Redirect to payment page
-      router.push("/checkout/payment");
+      router.push("/payment");
     } catch (error) {
       console.error("Error processing checkout:", error);
     } finally {
@@ -180,10 +191,15 @@ export default function CheckoutPage() {
     );
   }
 
-  const subtotal = getSubtotal();
-  const shipping = getShipping();
-  const tax = getTax();
-  const total = getTotal();
+  // Calculate totals
+  const subtotal = items.reduce((sum, item) => {
+    const price = typeof item.price === 'number' ? item.price : Number(item.price);
+    return sum + (price * item.quantity);
+  }, 0);
+  
+  const shipping = subtotal >= 100 ? 0 : 9.99; // Free shipping over $100
+  const tax = subtotal * 0.08; // 8% tax
+  const total = subtotal + shipping + tax;
   const isFreeShipping = shipping === 0;
 
   return (
@@ -424,10 +440,13 @@ export default function CheckoutPage() {
                   <div key={item.id} className="flex gap-3">
                     <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                       <Image
-                        src={item.product.images[0]?.url || ""}
+                        src={item.product.images[0]?.url || "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format"}
                         alt={item.product.name}
                         fill
                         className="object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format";
+                        }}
                       />
                       <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 text-white text-xs rounded-full flex items-center justify-center">
                         {item.quantity}

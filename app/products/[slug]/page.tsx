@@ -157,10 +157,13 @@ export default function ProductDetailsPage() {
             {/* Main Image */}
             <div className="aspect-square relative overflow-hidden rounded-lg bg-gray-100">
               <Image
-                src={product.images[selectedImageIndex]?.url || product.images[0]?.url || ""}
+                src={product.images[selectedImageIndex]?.url || product.images[0]?.url || "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format"}
                 alt={product.name}
                 fill
                 className="object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format";
+                }}
               />
               
               {/* Badges */}
@@ -191,10 +194,13 @@ export default function ProductDetailsPage() {
                     }`}
                   >
                     <Image
-                      src={image.url}
+                      src={image.url || "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format"}
                       alt={`${product.name} ${index + 1}`}
                       fill
                       className="object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format";
+                      }}
                     />
                   </button>
                 ))}

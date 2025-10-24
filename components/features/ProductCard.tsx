@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Heart, Star, Share2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { useWishlistStore } from "@/store/wishlistStore";
 import { formatPrice, calculateDiscount } from "@/lib/utils";
 import type { Product } from "@/types";
 
@@ -22,19 +21,68 @@ export function ProductCard({
   className = "" 
 }: ProductCardProps) {
   const [copied, setCopied] = useState(false);
-  const { addItem, removeItem, isInWishlist } = useWishlistStore();
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isWishlistLoading, setIsWishlistLoading] = useState(false);
   
-  const isWishlisted = isInWishlist(product.id);
   const discount = product.comparePrice ? calculateDiscount(product.price, product.comparePrice) : 0;
 
-  const handleWishlistToggle = (e: React.MouseEvent) => {
+  const handleWishlistToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (isWishlisted) {
-      removeItem(product.id);
-    } else {
-      addItem(product);
+    try {
+      setIsWishlistLoading(true);
+      const token = localStorage.getItem('auth_token');
+      
+      if (!token) {
+        alert('Please login to add items to wishlist');
+        return;
+      }
+
+      if (isWishlisted) {
+        // Remove from wishlist
+        const response = await fetch(`/api/wishlist/${product.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          setIsWishlisted(false);
+          alert('Removed from wishlist');
+        } else {
+          const error = await response.json();
+          alert(error.error || 'Failed to remove from wishlist');
+        }
+      } else {
+        // Add to wishlist
+        const response = await fetch('/api/wishlist', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            productId: product.id
+          })
+        });
+
+        if (response.ok) {
+          setIsWishlisted(true);
+          alert('Added to wishlist');
+          // Refresh wishlist count in navbar
+          window.dispatchEvent(new CustomEvent('wishlistUpdated'));
+        } else {
+          const error = await response.json();
+          alert(error.error || 'Failed to add to wishlist');
+        }
+      }
+    } catch (error) {
+      console.error('Wishlist operation failed:', error);
+      alert('Failed to update wishlist');
+    } finally {
+      setIsWishlistLoading(false);
     }
   };
 
@@ -96,9 +144,12 @@ export function ProductCard({
       {/* Image Container */}
       <div className="relative aspect-square overflow-hidden bg-gray-100">
         <img
-          src={product.images[0]?.url || ""}
+          src={product.images[0]?.url || "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format"}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          onError={(e) => {
+            e.currentTarget.src = "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=400&fit=crop&auto=format";
+          }}
         />
         
         {/* Badges */}
@@ -121,13 +172,14 @@ export function ProductCard({
             variant="ghost"
             size="icon"
             onClick={handleWishlistToggle}
-            className={`w-8 h-8 rounded-full ${
+            disabled={isWishlistLoading}
+            className={`w-8 h-8 rounded-full transition-colors ${
               isWishlisted 
                 ? "bg-red-500 text-white hover:bg-red-600" 
                 : "bg-white/90 text-gray-600 hover:bg-white hover:text-red-500"
-            }`}
+            } ${isWishlistLoading ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            <Heart className={`w-4 h-4 ${isWishlisted ? "fill-current" : ""}`} />
+            <Heart className={`w-4 h-4 ${isWishlisted ? "fill-current" : ""} ${isWishlistLoading ? "animate-pulse" : ""}`} />
           </Button>
           
           <Button
