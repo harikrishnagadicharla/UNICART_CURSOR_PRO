@@ -55,8 +55,15 @@ export default function CheckoutPage() {
       // Wait a moment for auth state to update
       setTimeout(async () => {
         const { isAuthenticated: authState, user: userState } = useAuthStore.getState();
+        
+        if (!authState) {
+          router.push("/login");
+          return;
+        }
+        
         // Check if cart has items by fetching from API
         const token = localStorage.getItem('auth_token');
+        let itemCount = 0;
         if (token) {
           try {
             const cartResponse = await fetch('/api/cart', {
@@ -64,22 +71,13 @@ export default function CheckoutPage() {
             });
             if (cartResponse.ok) {
               const cartData = await cartResponse.json();
-              const itemCount = cartData.cart?.items?.length || 0;
-              if (itemCount === 0) {
-                router.push("/cart");
-                return;
-              }
+              itemCount = cartData.cart?.items?.length || 0;
             }
           } catch (error) {
             console.error('Failed to check cart:', error);
           }
         }
         
-        if (!authState) {
-          router.push("/login");
-          return;
-        }
-
         if (itemCount === 0) {
           router.push("/cart");
           return;
