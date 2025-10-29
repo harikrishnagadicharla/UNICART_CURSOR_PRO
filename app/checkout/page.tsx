@@ -63,7 +63,7 @@ export default function CheckoutPage() {
         
         // Check if cart has items by fetching from API
         const token = localStorage.getItem('auth_token');
-        let itemCount = 0;
+        let itemCount: number = 0;
         if (token) {
           try {
             const cartResponse = await fetch('/api/cart', {
