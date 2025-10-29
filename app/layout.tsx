@@ -16,6 +16,19 @@ export const metadata: Metadata = {
   creator: "UniCart",
   publisher: "UniCart",
   robots: "index, follow",
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+    viewportFit: "cover",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "UniCart",
+  },
+  themeColor: "#3B82F6",
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -30,6 +43,7 @@ export const metadata: Metadata = {
     description: "Your one-stop destination for quality products at competitive prices.",
     creator: "@unicart",
   },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -39,6 +53,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={inter.variable}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+      </head>
       <body className="min-h-screen bg-white font-sans antialiased">
         <div className="relative flex min-h-screen flex-col">
           <Navbar />

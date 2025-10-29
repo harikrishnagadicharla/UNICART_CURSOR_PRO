@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { CartItem, Product, ProductVariant } from "@/types";
 import { CART_STORAGE_KEY, TAX_RATE, FREE_SHIPPING_THRESHOLD } from "@/lib/constants";
+import { apiClient } from "@/lib/api-client";
 
 interface CartStore {
   items: CartItem[];
@@ -34,17 +35,9 @@ export const useCartStore = create<CartStore>()(
           const token = localStorage.getItem('auth_token');
           if (!token) return;
 
-          const response = await fetch('/api/cart', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              set({ items: data.cart.items || [] });
-            }
+          const data = await apiClient.get('/api/cart');
+          if (data.success) {
+            set({ items: data.cart.items || [] });
           }
         } catch (error) {
           console.error('Failed to fetch cart:', error);
@@ -62,24 +55,14 @@ export const useCartStore = create<CartStore>()(
             return;
           }
 
-          const response = await fetch('/api/cart', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              productId: product.id,
-              quantity: quantity
-            })
+          const data = await apiClient.post('/api/cart', {
+            productId: product.id,
+            quantity: quantity
           });
 
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              // Refresh cart from server
-              await get().fetchCart();
-            }
+          if (data.success) {
+            // Refresh cart from server
+            await get().fetchCart();
           }
         } catch (error) {
           console.error('Failed to add item to cart:', error);
@@ -103,17 +86,10 @@ export const useCartStore = create<CartStore>()(
           const item = get().items.find(item => item.id === itemId);
           if (!item) return;
 
-          const response = await fetch(`/api/cart/${item.productId}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-
-          if (response.ok) {
-            // Refresh cart from server
-            await get().fetchCart();
-          }
+          await apiClient.delete(`/api/cart/${item.productId}`);
+          
+          // Refresh cart from server
+          await get().fetchCart();
         } catch (error) {
           console.error('Failed to remove item from cart:', error);
         } finally {
@@ -138,19 +114,10 @@ export const useCartStore = create<CartStore>()(
           const item = get().items.find(item => item.id === itemId);
           if (!item) return;
 
-          const response = await fetch(`/api/cart/${item.productId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ quantity })
-          });
+          await apiClient.put(`/api/cart/${item.productId}`, { quantity });
 
-          if (response.ok) {
-            // Refresh cart from server
-            await get().fetchCart();
-          }
+          // Refresh cart from server
+          await get().fetchCart();
         } catch (error) {
           console.error('Failed to update cart item:', error);
         } finally {
@@ -172,12 +139,7 @@ export const useCartStore = create<CartStore>()(
           // Remove all items one by one
           const items = get().items;
           for (const item of items) {
-            await fetch(`/api/cart/${item.productId}`, {
-              method: 'DELETE',
-              headers: {
-                'Authorization': `Bearer ${token}`
-              }
-            });
+            await apiClient.delete(`/api/cart/${item.productId}`);
           }
 
           // Refresh cart from server

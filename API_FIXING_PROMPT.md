@@ -357,6 +357,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 # Database
 DATABASE_URL="your_database_connection_string"
 
+
 # Authentication
 JWT_SECRET="your_jwt_secret_key"
 JWT_EXPIRES_IN="7d"

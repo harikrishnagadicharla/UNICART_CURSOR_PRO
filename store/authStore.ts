@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { User } from "@/types";
+import { apiClient } from "@/lib/api-client";
 
 interface AuthStore {
   user: User | null;
@@ -25,14 +26,8 @@ export const useAuthStore = create<AuthStore>()(
         try {
           set({ isLoading: true });
           
-          // Call the working login API
-          const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-          });
-          
-          const data = await response.json();
+          // Call the working login API using apiClient
+          const data = await apiClient.post('/api/auth/login', { email, password });
           
           if (data.success) {
             // Store token and user data
@@ -51,9 +46,9 @@ export const useAuthStore = create<AuthStore>()(
             set({ isLoading: false });
             return { success: false, message: data.error || "Login failed" };
           }
-        } catch (error) {
+        } catch (error: any) {
           set({ isLoading: false });
-          return { success: false, message: "Network error. Please try again." };
+          return { success: false, message: error.message || "Network error. Please try again." };
         }
       },
 
@@ -62,14 +57,8 @@ export const useAuthStore = create<AuthStore>()(
           set({ isLoading: true });
           const { email, password, firstName, lastName } = data;
           
-          // Call the working register API
-          const response = await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, firstName, lastName })
-          });
-          
-          const result = await response.json();
+          // Call the working register API using apiClient
+          const result = await apiClient.post('/api/auth/register', { email, password, firstName, lastName });
           
           if (result.success) {
             // Store token and user data
@@ -88,9 +77,9 @@ export const useAuthStore = create<AuthStore>()(
             set({ isLoading: false });
             return { success: false, message: result.error || "Registration failed" };
           }
-        } catch (error) {
+        } catch (error: any) {
           set({ isLoading: false });
-          return { success: false, message: "Network error. Please try again." };
+          return { success: false, message: error.message || "Network error. Please try again." };
         }
       },
 
