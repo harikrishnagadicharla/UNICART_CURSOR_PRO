@@ -47,7 +47,7 @@ export default function CheckoutPage() {
   });
   const [errors, setErrors] = useState<Partial<ShippingFormData>>({});
 
-  // Check authentication and cart
+  // Check authentication and cart before allowing checkout
   useEffect(() => {
     const checkAccess = async () => {
       await checkAuth();
